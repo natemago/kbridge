@@ -10,7 +10,7 @@ server:
   port: 3000
 
 kafka:
-  kafkaUrl: "kafla.local.cluster:9094"
+  kafkaUrl: "kafka.local.cluster:9094"
 
 endpoints:
 - url: "/products/:prodId"
