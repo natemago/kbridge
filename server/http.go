@@ -68,7 +68,16 @@ func (s *HTTPServer) bindEndpoints(router *gin.Engine) {
 				Passthrough:    endpoint.Passthrough,
 			}
 
+			replyDone := make(chan bool)
 			s.kafkaConnector.RequestReply(message, opts, func(reply []byte, headers connector.MessageHeaders, err error) {
+				defer func() {
+					replyDone <- true
+				}()
+
+				if err != nil {
+					log.Error().Err(err).Msgf("Reply failed: %s", err.Error())
+					return
+				}
 				respStatusCode := 200
 				respContentType := "application/octet-stream"
 				var e error
@@ -105,6 +114,7 @@ func (s *HTTPServer) bindEndpoints(router *gin.Engine) {
 				c.Data(respStatusCode, respContentType, reply)
 
 			})
+			<-replyDone
 		})
 		log.Info().Str("path", endpoint.Path).Msgf("Endpoint: %s", endpoint.Path)
 	}

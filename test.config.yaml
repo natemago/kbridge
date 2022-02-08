@@ -6,10 +6,14 @@ server:
     port: 9000
 
 kafka:
-  kafkaUrl: localhost:9094
-
+  kafkaUrl: localhost:29092
+  batchSize: 1
+  batchTimeout: 100
 
 endpoints:
   - path: /pavle
+    method: POST
+    dataType: json
+    passthrough: true
     kafka:
       topic: my-topic

@@ -23,7 +23,9 @@ type HTTPConfig struct {
 }
 
 type KafkaConfig struct {
-	KafkaURL string `json:"kafkaUrl" yaml:"kafkaUrl" mapstructure:"kafkaUrl"`
+	KafkaURL     string `json:"kafkaUrl" yaml:"kafkaUrl" mapstructure:"kafkaUrl"`
+	BatchSize    int    `json:"batchSize" yaml:"batchSize" mapstructure:"batchSize"`
+	BatchTimeout int    `json:"batchTimeout" yaml:"batchTimeout" mapstructure:"batchTimeout"`
 }
 
 type EndpointKafkaConfig struct {

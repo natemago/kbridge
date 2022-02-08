@@ -67,12 +67,22 @@
             "description": "Global Kafka configuration",
             "type": "object",
             "required": [
-                "kafkaUrl"
+                "kafkaUrl", "batchSize", "batchTimeout"
             ],
             "properties": {
                 "kafkaUrl": {
                     "description": "Kafka server URL",
                     "type": "string"
+                },
+                "batchSize": {
+                    "edscription": "Kafka writer batch size.",
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "batchTimeout": {
+                    "edscription": "Kafka writer batch timeout in milliseconds.",
+                    "type": "integer",
+                    "minimum": 1
                 }
             }
         },

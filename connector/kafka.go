@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/natemago/kbridge"
+	"github.com/rs/zerolog/log"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -30,7 +31,7 @@ type KafkaConnector struct {
 	writer             *kafka.Writer
 	replyHandlers      map[string]*replyHandlerWrapper
 	handlerTTL         time.Duration
-	serializerRegistry SerializersRegistry
+	serializerRegistry *SerializersRegistry
 	started            bool
 	closeMux           sync.Mutex
 }
@@ -122,7 +123,11 @@ func (k *KafkaConnector) SetUp() {
 }
 
 func (k *KafkaConnector) consumeFromReader(reader *kafka.Reader, startTime time.Time) {
-	reader.SetOffsetAt(context.Background(), startTime)
+	if err := reader.SetOffsetAt(context.Background(), startTime); err != nil {
+		log.Fatal().Str("error", err.Error()).Msgf("Failed to set read offset for reader: %s", err.Error())
+		return
+	}
+
 	for {
 		message, err := reader.ReadMessage(context.Background())
 		if err != nil {
@@ -146,6 +151,8 @@ func (k *KafkaConnector) handleMessage(message kafka.Message) {
 		}
 	}
 
+	delete(k.replyHandlers, string(message.Key))
+
 	go handler.Reply(message.Value, headers)
 }
 
@@ -162,8 +169,6 @@ func (k *KafkaConnector) init(config *kbridge.Config) error {
 func (k *KafkaConnector) setupReaders(config *kbridge.Config) error {
 	kconf := config.Kafka
 
-	now := time.Now()
-
 	for _, endpoint := range config.Endpoints {
 
 		readTopic := endpoint.Kafka.ReplyTopic
@@ -179,11 +184,8 @@ func (k *KafkaConnector) setupReaders(config *kbridge.Config) error {
 			Partition: readPartition,
 		})
 
-		if err := reader.SetOffsetAt(context.Background(), now); err != nil {
-			return err
-		}
-
 		k.readers[readTopic] = reader
+		log.Info().Msgf("Reading from topic %s (partition %d)", readTopic, readPartition)
 	}
 
 	return nil
@@ -191,7 +193,9 @@ func (k *KafkaConnector) setupReaders(config *kbridge.Config) error {
 
 func (k *KafkaConnector) setupWriter(config *kbridge.Config) {
 	k.writer = kafka.NewWriter(kafka.WriterConfig{
-		Brokers: []string{config.Kafka.KafkaURL},
+		Brokers:      []string{config.Kafka.KafkaURL},
+		BatchSize:    config.Kafka.BatchSize,
+		BatchTimeout: time.Duration(config.Kafka.BatchTimeout) * time.Millisecond,
 	})
 }
 
@@ -229,15 +233,24 @@ func (k *KafkaConnector) Close() error {
 }
 
 func CreateKafkaConnector(config *kbridge.Config) (Connector, error) {
+
+	serializerRegistry := NewSerializerRegistry()
+
+	serializerRegistry.Register("json", &JSONSerializer{})
+	serializerRegistry.Register("yaml", &YAMLSerializer{})
+
 	conn := &KafkaConnector{
-		readers:       make(map[string]*kafka.Reader),
-		replyHandlers: make(map[string]*replyHandlerWrapper),
-		handlerTTL:    30 * time.Second,
+		readers:            make(map[string]*kafka.Reader),
+		replyHandlers:      make(map[string]*replyHandlerWrapper),
+		handlerTTL:         30 * time.Second,
+		serializerRegistry: serializerRegistry,
 	}
 
 	if err := conn.init(config); err != nil {
 		return nil, err
 	}
+
+	conn.SetUp()
 
 	return conn, nil
 }

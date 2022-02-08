@@ -84,6 +84,12 @@ func (r *SerializersRegistry) GetSerializer(messageType string) (MessageSerializ
 	return nil, fmt.Errorf("no serializer for type: %s", messageType)
 }
 
+func NewSerializerRegistry() *SerializersRegistry {
+	return &SerializersRegistry{
+		serializers: map[string]MessageSerializer{},
+	}
+}
+
 func (h MessageHeaders) GetString(key string) string {
 	if value, ok := h[key]; ok {
 		if strValue, ok := value.(string); ok {
