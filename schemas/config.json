@@ -1,0 +1,128 @@
+{
+    "$id": "https://github.com/natemago/kbridge/config-schema",
+    "description": "Kbridge configuration document schema",
+    "type": "object",
+    "required": [
+        "version",
+        "server",
+        "kafka",
+        "endpoints"
+    ],
+    "properties": {
+        "version": {
+            "description": "Schema version",
+            "type": "string"
+        },
+        "server": {
+            "$ref": "#/$defs/ServerConfig"
+        },
+        "kafka": {
+            "$ref": "#/$defs/KafkaConfig"
+        },
+        "endpoints": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/EndpointConfig"
+            }
+        }
+    },
+    "$defs": {
+        "ServerConfig": {
+            "description": "Server Configuration for both HTTP and/or gRPC.",
+            "type": "object",
+            "properties": {
+                "http": {
+                    "$ref": "#/$defs/HTTPConfig"
+                },
+                "grpc": {
+                    "$ref": "#/$defs/GRPCConfig"
+                }
+            }
+        },
+        "HTTPConfig": {
+            "description": "Server HTTP configuration",
+            "type": "object",
+            "required": [
+                "host",
+                "port"
+            ],
+            "properties": {
+                "host": {
+                    "description": "Bind the HTTP listener to this hostname (or IP).",
+                    "type": "string"
+                },
+                "port": {
+                    "description": "Bind the HTTP listener to this port.",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 65535
+                }
+            }
+        },
+        "GRPCConfig": {
+            "description": "Server gRPC configuration",
+            "type": "object"
+        },
+        "KafkaConfig": {
+            "description": "Global Kafka configuration",
+            "type": "object",
+            "required": [
+                "kafkaUrl"
+            ],
+            "properties": {
+                "kafkaUrl": {
+                    "description": "Kafka server URL",
+                    "type": "string"
+                }
+            }
+        },
+        "EndpointConfig": {
+            "description": "Configuration for a particular endpoint",
+            "type": "object",
+            "required": [
+                "dataType",
+                "kafka"
+            ],
+            "properties": {
+                "grps": {
+                    "type": "boolean"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "method": {
+                    "type": "string"
+                },
+                "dataType": {
+                    "type": "string"
+                },
+                "passthrough": {
+                    "type": "boolean"
+                },
+                "kafka": {
+                    "$ref": "#/$defs/EndpointKafkaConfig"
+                }
+            }
+        },
+        "EndpointKafkaConfig": {
+            "type": "object",
+            "required": [
+                "topic"
+            ],
+            "properties": {
+                "topic": {
+                    "type": "string"
+                },
+                "partition": {
+                    "type": "integer"
+                },
+                "replyTopic": {
+                    "type": "string"
+                },
+                "replyPartition": {
+                    "type": "integer"
+                }
+            }
+        }
+    }
+}

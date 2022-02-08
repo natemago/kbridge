@@ -1,0 +1,15 @@
+version: "1.0.0"
+
+server:
+  http:
+    host: localhost
+    port: 9000
+
+kafka:
+  kafkaUrl: localhost:9094
+
+
+endpoints:
+  - path: /pavle
+    kafka:
+      topic: my-topic

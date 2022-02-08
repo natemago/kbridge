@@ -2,7 +2,9 @@ package main
 
 import (
 	"github.com/natemago/kbridge"
+	"github.com/natemago/kbridge/connector"
 	"github.com/natemago/kbridge/server"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
@@ -40,8 +42,12 @@ func loadConfig() *kbridge.Config {
 
 func RunKBridge(cmd *cobra.Command, args []string) {
 	config := loadConfig()
+	conn, err := connector.CreateKafkaConnector(config)
+	if err != nil {
+		log.Fatal().Str("error", err.Error()).Msgf("Failed to create connector: %s", err.Error())
+	}
 
-	httpServer := server.NewHTTPServer(config)
+	httpServer := server.NewHTTPServer(config, conn)
 
 	httpServer.Run()
 

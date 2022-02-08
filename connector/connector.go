@@ -18,12 +18,16 @@ type Message struct {
 }
 
 type SendOptions struct {
-	Topic       string
-	Partition   int
-	Passthrough bool
+	Topic          string
+	Partition      int
+	ReplyTopic     string
+	ReplyPartition int
+	Passthrough    bool
 }
 
-type ReplyHandler func(reply []byte, err error)
+type MessageHeaders map[string]interface{}
+
+type ReplyHandler func(reply []byte, headers MessageHeaders, err error)
 
 type Connector interface {
 	Send(message *Message, opts *SendOptions) error
@@ -78,4 +82,16 @@ func (r *SerializersRegistry) GetSerializer(messageType string) (MessageSerializ
 		return serializer, nil
 	}
 	return nil, fmt.Errorf("no serializer for type: %s", messageType)
+}
+
+func (h MessageHeaders) GetString(key string) string {
+	if value, ok := h[key]; ok {
+		if strValue, ok := value.(string); ok {
+			return strValue
+		}
+		if byteVal, ok := value.([]byte); ok {
+			return string(byteVal)
+		}
+	}
+	return ""
 }
