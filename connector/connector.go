@@ -37,7 +37,7 @@ type Connector interface {
 
 func (m *Message) Validate() error {
 	if m.ID == "" {
-		return fmt.Errorf("missing message ID")
+		return ValidationError("missing message ID")
 	}
 
 	return nil
@@ -81,7 +81,7 @@ func (r *SerializersRegistry) GetSerializer(messageType string) (MessageSerializ
 	if serializer, ok := r.serializers[messageType]; ok {
 		return serializer, nil
 	}
-	return nil, fmt.Errorf("no serializer for type: %s", messageType)
+	return nil, ConfigurationError(fmt.Sprintf("no serializer for type: %s", messageType))
 }
 
 func NewSerializerRegistry() *SerializersRegistry {
@@ -101,3 +101,36 @@ func (h MessageHeaders) GetString(key string) string {
 	}
 	return ""
 }
+
+// ConnectorError error interface
+
+type connectorError struct {
+	errType string
+	message string
+}
+
+func (c *connectorError) Error() string {
+	return c.message
+}
+
+type ConnectorError func(message string) error
+
+func ConnectorErrorType(errorType string) ConnectorError {
+	return func(message string) error {
+		return &connectorError{
+			errType: errorType,
+			message: message,
+		}
+	}
+}
+
+func IsErrorOfType(errType string, err error) bool {
+	if connErr, ok := err.(*connectorError); ok {
+		return connErr.errType == errType
+	}
+	return false
+}
+
+var TimeoutError = ConnectorErrorType("timeout")
+var ValidationError = ConnectorErrorType("validation")
+var ConfigurationError = ConnectorErrorType("config")

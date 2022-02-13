@@ -95,7 +95,7 @@ func (k *KafkaConnector) maintenance() {
 	for _, replyID := range expired {
 		handler := k.replyHandlers[replyID]
 		delete(k.replyHandlers, replyID)
-		handler.ReplyError(fmt.Errorf("timeout"))
+		handler.ReplyError(TimeoutError("timeout"))
 	}
 }
 
