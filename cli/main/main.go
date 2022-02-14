@@ -1,6 +1,13 @@
 package main
 
 import (
+	"errors"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
 	"github.com/natemago/kbridge"
 	"github.com/natemago/kbridge/connector"
 	"github.com/natemago/kbridge/server"
@@ -49,8 +56,22 @@ func RunKBridge(cmd *cobra.Command, args []string) {
 
 	httpServer := server.NewHTTPServer(config, conn)
 
-	httpServer.Run()
+	quit := make(chan os.Signal, 1)
 
+	signal.Notify(quit, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		if err := httpServer.Run(); err != nil {
+			if !errors.Is(err, http.ErrServerClosed) {
+				log.Error().Str("error", err.Error()).Msgf("Server did not shut down properly: %s", err.Error())
+			}
+		}
+	}()
+
+	<-quit
+	if err := httpServer.Shutdown(10 * time.Second); err != nil {
+		log.Error().Str("error", err.Error()).Msgf("Server exited with error: %s", err.Error())
+	}
 }
 
 func main() {

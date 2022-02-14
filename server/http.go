@@ -1,10 +1,14 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/natemago/kbridge"
@@ -15,6 +19,10 @@ import (
 type HTTPServer struct {
 	Config         *kbridge.Config
 	kafkaConnector connector.Connector
+	router         *gin.Engine
+	httpServer     *http.Server
+	running        bool
+	runMux         sync.Mutex
 }
 
 type ErrorMessage struct {
@@ -121,15 +129,43 @@ func (s *HTTPServer) bindEndpoints(router *gin.Engine) {
 }
 
 func (s *HTTPServer) Run() error {
+	s.runMux.Lock()
+	if s.running {
+		s.runMux.Unlock()
+		return fmt.Errorf("http server already running")
+	}
+	s.running = true
 
 	router := gin.Default()
 
 	address := fmt.Sprintf("%s:%d", s.Config.Server.HTTPConfig.Host, s.Config.Server.HTTPConfig.Port)
 
+	s.httpServer = &http.Server{
+		Addr:    address,
+		Handler: router,
+	}
+
 	s.bindEndpoints(router)
 
 	log.Info().Str("address", address).Msgf("HTTP Server running on: %s", address)
-	return router.Run(address)
+	s.runMux.Unlock()
+	return s.httpServer.ListenAndServe()
+}
+
+func (s *HTTPServer) Shutdown(timeout time.Duration) error {
+	s.runMux.Lock()
+	if !s.running {
+		s.runMux.Unlock()
+		return fmt.Errorf("not running")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	err := s.httpServer.Shutdown(ctx)
+	s.running = false
+	s.runMux.Unlock()
+	return err
 }
 
 func NewHTTPServer(config *kbridge.Config, conn connector.Connector) *HTTPServer {
