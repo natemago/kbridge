@@ -36,10 +36,12 @@ func (s *HTTPServer) bindEndpoints(router *gin.Engine) {
 		if endpoint.IsGRPC {
 			continue
 		}
+
 		httpMethod := endpoint.HTTPMethod
 		if httpMethod == "" {
 			httpMethod = "GET"
 		}
+
 		router.Handle(httpMethod, endpoint.Path, func(c *gin.Context) {
 			var data []byte
 			var err error
@@ -84,12 +86,25 @@ func (s *HTTPServer) bindEndpoints(router *gin.Engine) {
 
 				if err != nil {
 					log.Error().Err(err).Msgf("Reply failed: %s", err.Error())
+					if connector.IsErrorOfType("timeout", err) {
+						c.JSON(504, &ErrorMessage{
+							Status: 504,
+							Mesage: "timeout",
+							Error:  err.Error(),
+						})
+						return
+					}
+					c.JSON(502, &ErrorMessage{
+						Status: 502,
+						Mesage: "transport error",
+						Error:  err.Error(),
+					})
 					return
 				}
+
 				respStatusCode := 200
 				respContentType := "application/octet-stream"
 				var e error
-
 				if headers != nil {
 					respStatusCodeStr := headers.GetString("KBRG-HTTP-RESPONSE-CODE")
 					if respStatusCodeStr != "" {
@@ -98,6 +113,7 @@ func (s *HTTPServer) bindEndpoints(router *gin.Engine) {
 							log.Error().Str("error", e.Error()).Msg("Failed to read HTTP Response Code")
 						}
 					}
+
 					respContentTypeStr := headers.GetString("KBRG-HTTP-HEADER-Content-Type")
 					if respContentTypeStr != "" {
 						respContentType = respContentTypeStr
@@ -116,14 +132,14 @@ func (s *HTTPServer) bindEndpoints(router *gin.Engine) {
 							}
 						}
 					}
-
 				}
 
 				c.Data(respStatusCode, respContentType, reply)
-
 			})
+
 			<-replyDone
 		})
+
 		log.Info().Str("path", endpoint.Path).Msgf("Endpoint: %s", endpoint.Path)
 	}
 }
@@ -169,7 +185,6 @@ func (s *HTTPServer) Shutdown(timeout time.Duration) error {
 }
 
 func NewHTTPServer(config *kbridge.Config, conn connector.Connector) *HTTPServer {
-
 	return &HTTPServer{
 		Config:         config,
 		kafkaConnector: conn,
