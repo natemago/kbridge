@@ -11,9 +11,15 @@ kafka:
   batchTimeout: 100
 
 endpoints:
-  - path: /pavle
+  - path: /products
     method: POST
     dataType: json
     passthrough: true
     kafka:
-      topic: my-topic
+      topic: create-product
+  - path: /products/:productId
+    method: GET
+    dataType: json
+    passthrough: true
+    kafka:
+      topic: get-product

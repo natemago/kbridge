@@ -9,12 +9,14 @@ import (
 )
 
 type Message struct {
-	ID        string
-	Type      string
-	Port      string
-	Variables map[string]string
-	Headers   map[string]string
-	Payload   []byte
+	ID         string
+	Type       string
+	Port       string
+	Path       string
+	Variables  map[string]string
+	Parameters map[string][]string
+	Headers    map[string]string
+	Payload    []byte
 }
 
 type SendOptions struct {

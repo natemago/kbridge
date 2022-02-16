@@ -19,7 +19,6 @@ import (
 type HTTPServer struct {
 	Config         *kbridge.Config
 	kafkaConnector connector.Connector
-	router         *gin.Engine
 	httpServer     *http.Server
 	running        bool
 	runMux         sync.Mutex
@@ -62,12 +61,20 @@ func (s *HTTPServer) bindEndpoints(router *gin.Engine) {
 				headers[fmt.Sprintf("KBRG-HTTP-HEADER-%s", key)] = value[0]
 			}
 
+			variables := map[string]string{}
+			for _, param := range c.Params {
+				variables[param.Key] = param.Value
+			}
+
 			message := &connector.Message{
-				ID:      connector.NewMessageID("KBRG-HTTP-", 16),
-				Type:    endpoint.DataType,
-				Port:    "http",
-				Payload: data,
-				Headers: headers,
+				ID:         connector.NewMessageID("KBRG-HTTP", 16),
+				Type:       endpoint.DataType,
+				Port:       "http",
+				Path:       c.Request.URL.Path,
+				Payload:    data,
+				Headers:    headers,
+				Variables:  variables,
+				Parameters: c.Request.URL.Query(),
 			}
 
 			opts := &connector.SendOptions{

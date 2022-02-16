@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/natemago/kbridge/connector"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/segmentio/kafka-go"
@@ -60,9 +62,16 @@ func RunEchoClient(cmd *cobra.Command, args []string) {
 				continue
 			}
 			log.Info().Msgf("%s => %s", string(message.Key), string(message.Value))
+
+			responseValue := message.Value
+			parsedValue := &connector.Message{}
+			if err := json.Unmarshal(message.Value, parsedValue); err == nil {
+				responseValue = parsedValue.Payload
+			}
+
 			if err := writer.WriteMessages(context.Background(), kafka.Message{
 				Key:       message.Key,
-				Value:     message.Value,
+				Value:     responseValue,
 				Topic:     ProgramOptions.ReplyTopic,
 				Partition: ProgramOptions.ReplyPartition,
 			}); err != nil {
